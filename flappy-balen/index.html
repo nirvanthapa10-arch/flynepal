@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#000000">
+<title>Political Birds</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+body{margin:0;font-family:'Poppins',sans-serif;background:linear-gradient(135deg,#141E30,#243B55);text-align:center;color:#fff;overflow-x:hidden;}
+
+/* ===== INTRO ===== */
+#intro{
+position:fixed;width:100%;height:100vh;background:linear-gradient(180deg,#000428,#004e92);
+display:flex;flex-direction:column;justify-content:center;align-items:center;z-index:9999;cursor:pointer;
+}
+#intro h1{font-size:38px;font-weight:800;letter-spacing:2px;animation:fadeIn 2s ease forwards;}
+#intro p{opacity:0.7;margin-top:15px;animation:blink 1.5s infinite;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(-20px);}to{opacity:1;transform:translateY(0);}}
+@keyframes blink{0%,100%{opacity:0.3;}50%{opacity:1;}}
+
+/* ===== PANELS ===== */
+.panel{display:none;padding:20px;}
+.panel.active{display:block;}
+h2{margin-bottom:15px;}
+button{
+padding:12px 24px;margin:8px;border:none;border-radius:30px;background:linear-gradient(45deg,#ff9800,#ff5722);color:white;font-weight:600;cursor:pointer;
+}
+
+/* ===== GAME ===== */
+#game-container{width:400px;max-width:95%;height:700px;margin:20px auto;background:#000;border-radius:25px;overflow:hidden;position:relative;display:none;}
+#gameCanvas{width:100%;height:100%;display:block;}
+#scoreboard{position:absolute;width:100%;display:flex;justify-content:space-between;padding:15px;font-weight:600;pointer-events:none;font-size:18px;}
+#scoreboard div{background:rgba(0,0,0,0.5);padding:6px 14px;border-radius:20px;}
+
+/* ===== LEADERBOARD ===== */
+#home-leaderboard-list{max-width:320px;margin:0 auto 15px auto;}
+.lb-row{background:rgba(255,255,255,0.1);backdrop-filter:blur(10px);padding:12px 18px;margin:8px 0;border-radius:15px;display:flex;justify-content:space-between;font-weight:600;}
+.rank-1{border-left:5px solid gold;}
+.rank-2{border-left:5px solid silver;}
+.rank-3{border-left:5px solid #cd7f32;}
+
+/* ===== SHOP / CHARACTERS ===== */
+#character-list{display:flex;flex-wrap:wrap;justify-content:center;gap:15px;}
+.char-card{width:120px;padding:15px;border-radius:20px;background:#fff;color:#000;cursor:pointer;transition:0.2s;}
+.char-card:hover{transform:scale(1.05);}
+.char-card.selected{border:3px solid #ff9800;}
+.char-card img{width:65px;height:65px;border-radius:50%;}
+</style>
+</head>
+<body>
+
+<!-- INTRO -->
+<div id="intro" onclick="enterGame()">
+<h1>Political Birds</h1>
+<p>Tap to Continue</p>
+</div>
+
+<!-- HOME -->
+<div class="panel" id="home">
+<h2>Leaderboard</h2>
+<div id="home-leaderboard-list"></div>
+<button onclick="goToPartyMenu()">🎮 Play</button>
+<button onclick="openShop()">🛍️ Shop</button>
+</div>
+
+<!-- PARTY MENU -->
+<div class="panel" id="party-menu">
+<h2>Select Theme</h2>
+<button onclick="chooseParty('leadersworld')">Leaders World</button>
+<button onclick="chooseParty('RSP')">RSP</button>
+<button onclick="chooseParty('Congress')">Congress</button>
+<button onclick="chooseParty('CPN')">CPN</button>
+</div>
+
+<!-- CHARACTER / SHOP MENU -->
+<div class="panel" id="character-menu">
+<h2>Character Shop</h2>
+<div>Your Coins: <span id="shop-coins"></span></div>
+<div id="character-list"></div>
+<button onclick="startGame()">🚀 Start Game</button>
+</div>
+
+<!-- GAME OVER -->
+<div class="panel" id="game-over">
+<h2>Game Over</h2>
+<div id="final-score"></div>
+<button onclick="startGame()">🔁 Play Again</button>
+<button onclick="watchAdReward()">🎁 Watch Ad +50 Coins</button>
+<button onclick="goHome()">🏠 Home</button>
+</div>
+
+<!-- GAME -->
+<div id="game-container">
+<div id="scoreboard">
+<div>Score: <span id="score-val">0</span></div>
+<div>🪙 <span id="coin-val">0</span></div>
+</div>
+<canvas id="gameCanvas"></canvas>
+</div>
+
+<script>
+/* ===== INTRO ===== */
+function enterGame(){
+document.getElementById("intro").style.display="none";
+showPanel("home");
+displayLeaderboard();
+}
+
+/* ===== STORAGE ===== */
+let coins=parseInt(localStorage.getItem("coins"))||0;
+let leaderboard=JSON.parse(localStorage.getItem("leaderboard"))||{};
+let selectedParty=localStorage.getItem("selectedTheme")||"leadersworld";
+let selectedCharacter=localStorage.getItem("selectedCharacter")||"Balen";
+
+/* ===== IMAGES ===== */
+function loadImg(src){const i=new Image();i.src=src;return i;}
+const birdImgs={
+Balen:loadImg("assets/balen.png"),
+Oli:loadImg("assets/oli.png"),
+Sher:loadImg("assets/sher.png"),
+Prachanda:loadImg("assets/prachanda.png"),
+HarkaSampang:loadImg("assets/harkasampang.png"),
+Ravi:loadImg("assets/ravi.png"),
+Durgaprasai:loadImg("assets/durgaprasai.png"),
+NikolasBhusal:loadImg("assets/nikolasbhusal.png")
+};
+const bgImgs={
+leadersworld:loadImg("assets/background.png"),
+RSP:loadImg("assets/rsp-bg.png"),
+Congress:loadImg("assets/congress-bg.png"),
+CPN:loadImg("assets/cpn-bg.png")
+};
+const coinImg = loadImg("assets/coin.png");
+
+/* ===== SHOP DATA ===== */
+const allCharacters={
+Balen:{unlocked:true,price:0},
+Oli:{unlocked:false,price:100},
+Sher:{unlocked:false,price:150},
+Prachanda:{unlocked:true,price:0},
+HarkaSampang:{unlocked:false,price:250},
+Ravi:{unlocked:true,price:0},
+Durgaprasai:{unlocked:false,price:300},
+NikolasBhusal:{unlocked:false,price:300}
+};
+Object.keys(allCharacters).forEach(c=>{
+if(localStorage.getItem("char_"+c)==="true") allCharacters[c].unlocked=true;
+});
+
+/* ===== SHOP UI ===== */
+function loadShopCharacters(){
+document.getElementById("shop-coins").innerText=coins;
+const list=document.getElementById("character-list");
+list.innerHTML="";
+Object.keys(allCharacters).forEach(char=>{
+const box=document.createElement("div");
+box.className="char-card";
+if(selectedCharacter===char)box.classList.add("selected");
+const img=document.createElement("img");
+img.src=birdImgs[char].src;
+const name=document.createElement("div"); name.innerText=char;
+const price=document.createElement("div");
+if(allCharacters[char].unlocked){
+price.innerText="Unlocked";
+box.onclick=()=>{selectedCharacter=char;localStorage.setItem("selectedCharacter",char);loadShopCharacters();}
+}else{
+price.innerText=allCharacters[char].price+" coins";
+box.onclick=()=>{
+if(coins>=allCharacters[char].price){
+coins-=allCharacters[char].price;
+localStorage.setItem("coins",coins);
+allCharacters[char].unlocked=true;
+localStorage.setItem("char_"+char,"true");
+selectedCharacter=char;
+loadShopCharacters();
+}else alert("Not enough coins");
+}
+}
+box.appendChild(img); box.appendChild(name); box.appendChild(price); list.appendChild(box);
+});
+}
+
+/* ===== PANEL HELPERS ===== */
+function hideAllPanels(){document.querySelectorAll(".panel").forEach(p=>p.classList.remove("active"));}
+function showPanel(id){document.getElementById(id).classList.add("active");}
+function goHome(){hideAllPanels();showPanel("home");displayLeaderboard();}
+function goToPartyMenu(){hideAllPanels();showPanel("party-menu");}
+function chooseParty(p){selectedParty=p;localStorage.setItem("selectedTheme",p);hideAllPanels();showPanel("character-menu");loadShopCharacters();}
+function openShop(){hideAllPanels();showPanel("character-menu");loadShopCharacters();}
+
+/* ===== LEADERBOARD ===== */
+function displayLeaderboard(){
+const list=document.getElementById("home-leaderboard-list");
+list.innerHTML="";
+Object.entries(leaderboard).sort((a,b)=>b[1]-a[1]).slice(0,5).forEach(([name,val],i)=>{
+const row=document.createElement("div");
+row.className="lb-row";
+if(i===0)row.classList.add("rank-1");
+if(i===1)row.classList.add("rank-2");
+if(i===2)row.classList.add("rank-3");
+row.innerHTML=`<span>#${i+1} ${name}</span><span>${val}</span>`;
+list.appendChild(row);
+});
+}
+
+/* ===== GAME LOGIC ===== */
+const canvas=document.getElementById("gameCanvas");
+const ctx=canvas.getContext("2d");
+canvas.width=400; canvas.height=700;
+let bird,pipes,coinsArr,frame,score,speed,active,anim;
+const GRAVITY=0.6; const JUMP_FORCE=-10;
+const coinSize=30;
+
+function init(){
+bird={x:80,y:350,v:0}; pipes=[]; coinsArr=[]; frame=0; score=0; speed=4; active=true;
+document.getElementById("score-val").innerText=0;
+document.getElementById("coin-val").innerText=coins;
+document.getElementById("game-container").style.display="block";
+}
+
+function jump(){if(active)bird.v=JUMP_FORCE;}
+canvas.addEventListener("mousedown",jump);
+window.addEventListener("keydown",e=>{if(e.code==="Space")jump();});
+
+function spawnPipe(){
+const newPipe={x:400,top:Math.random()*250+80,gap:150,passed:false};
+pipes.push(newPipe);
+spawnCoin(newPipe);
+}
+
+function spawnCoin(pipe){
+const coinY = pipe.top + Math.random()*(pipe.gap-50) + 25;
+coinsArr.push({x:pipe.x+25,y:coinY,collected:false});
+}
+
+function update(){
+frame++; bird.v+=GRAVITY; bird.y+=bird.v; speed=4+(score*0.1);
+
+// spawn pipe every 90 frames
+if(frame%90===0) spawnPipe();
+
+// update pipes
+pipes.forEach(p=>{
+p.x-=speed;
+if(!p.passed && p.x<bird.x){p.passed=true; score++; document.getElementById("score-val").innerText=score;}
+// collision
+if(bird.x+20>p.x && bird.x-20<p.x+50 && (bird.y<p.top||bird.y>p.top+p.gap)) endGame();
+});
+pipes=pipes.filter(p=>p.x>-60);
+
+// update coins
+coinsArr.forEach(c=>{
+c.x-=speed;
+if(!c.collected && bird.x+20>c.x && bird.x-20<c.x+coinSize && bird.y+20>c.y && bird.y-20<c.y+coinSize){
+c.collected=true;
+coins+=10; document.getElementById("coin-val").innerText=coins;
+}
+});
+coinsArr = coinsArr.filter(c=>!c.collected && c.x>-coinSize);
+
+if(bird.y>700||bird.y<0) endGame();
+}
+
+function draw(){
+ctx.clearRect(0,0,400,700);
+ctx.drawImage(bgImgs[selectedParty],0,0,400,700);
+
+// draw pipes
+ctx.fillStyle="green";
+pipes.forEach(p=>{
+ctx.fillRect(p.x,0,50,p.top);
+ctx.fillRect(p.x,p.top+p.gap,50,700);
+});
+
+// draw coins
+coinsArr.forEach(c=>{
+ctx.drawImage(coinImg,c.x,c.y,coinSize,coinSize);
+});
+
+// draw bird
+ctx.drawImage(birdImgs[selectedCharacter],bird.x-25,bird.y-25,50,50);
+}
+
+function loop(){if(!active)return; update(); draw(); anim=requestAnimationFrame(loop);}
+function startGame(){hideAllPanels();showInterstitialAd(()=>{init();loop();});}
+
+function endGame(){
+active=false; cancelAnimationFrame(anim);
+leaderboard[selectedCharacter]=Math.max(leaderboard[selectedCharacter]||0,score);
+localStorage.setItem("leaderboard",JSON.stringify(leaderboard));
+localStorage.setItem("coins",coins);
+showInterstitialAd(()=>{
+document.getElementById("game-container").style.display="none";
+showPanel("game-over");
+document.getElementById("final-score").innerText="Score: "+score;
+});
+}
+
+/* ===== ADS ===== */
+function showInterstitialAd(callback){alert("Showing Ad..."); setTimeout(callback,1500);}
+function watchAdReward(){showInterstitialAd(()=>{
+coins+=50;
+localStorage.setItem("coins",coins);
+alert("You earned 50 coins!");
+goHome();
+});}
+
+</script>
+</body>
+</html>

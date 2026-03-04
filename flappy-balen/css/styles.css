@@ -1,0 +1,60 @@
+/* ================= FORCE FIX CHARACTER SHOP ================= */
+#gameCanvas {
+  display: block;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;       /* full width */
+  height: 100vh;      /* full height */
+  z-index: 10;        /* above panels */
+  background: #000;   /* fallback */
+}
+#character-list {
+  display: grid !important;
+  grid-template-columns: repeat(2, 1fr) !important;
+  gap: 12px !important;
+  padding: 12px !important;
+}
+
+.character-card {
+  background: white !important;
+  border-radius: 14px !important;
+  padding: 10px !important;
+  text-align: center !important;
+  box-shadow: 0 6px 16px rgba(0,0,0,0.08) !important;
+  border: 2px solid transparent !important;
+  overflow: hidden !important;
+}
+
+.character-card img {
+  width: 60px !important;
+  height: 60px !important;
+  object-fit: cover !important;
+  border-radius: 50% !important;
+  display: block !important;
+  margin: 0 auto 6px auto !important;
+}
+
+.character-card h4 {
+  font-size: 13px !important;
+  margin: 4px 0 !important;
+}
+
+.character-card.selected {
+  border: 2px solid orange !important;
+  background: #fff7e6 !important;
+}
+
+.price-badge {
+  font-size: 11px !important;
+  padding: 3px 6px !important;
+  border-radius: 20px !important;
+}
+
+#selected-character-image {
+  width: 90px !important;
+  height: 90px !important;
+  object-fit: contain !important;
+  display: block;
+  margin: 15px auto;
+}
